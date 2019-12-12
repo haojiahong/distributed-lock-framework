@@ -62,14 +62,18 @@ public class ZookeeperLock {
             return true;
         } else {
             String waitPath = PARENT_LOCK_PATH + "/" + children.get(index - 1);
-            waitForLock(waitPath, currentLockPath);
+            waitForLock(waitPath);
             return false;
         }
 
 
     }
 
-    private void waitForLock(String waitPath, String currentLockPath) {
+    /**
+     * 这里比较和设置监听不是原子性的，有问题啊
+     * @param waitPath
+     */
+    private void waitForLock(String waitPath) {
         countDownLatch = new CountDownLatch(1);
         zkClient.subscribeDataChanges(waitPath, new IZkDataListener() {
             @Override
