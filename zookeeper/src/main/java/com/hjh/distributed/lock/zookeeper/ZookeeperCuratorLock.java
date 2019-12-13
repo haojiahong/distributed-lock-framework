@@ -76,6 +76,7 @@ public class ZookeeperCuratorLock {
 
     private void waitForLock(String waitPath) throws Exception {
         try {
+            //这种注册监听只会触发一次，不同于cache。
             client.getData().usingWatcher(new CuratorWatcher() {
                 @Override
                 public void process(WatchedEvent event) throws Exception {
