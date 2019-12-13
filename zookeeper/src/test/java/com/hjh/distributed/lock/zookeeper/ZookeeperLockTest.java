@@ -6,6 +6,7 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.locks.InterProcessMutex;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.Watcher;
 import org.junit.Test;
 
@@ -107,5 +108,20 @@ public class ZookeeperLockTest {
                 e.printStackTrace();
             }
         }
+    }
+
+    @Test
+    public void testCuratorApi() throws Exception {
+        CuratorFramework client = CuratorFrameworkFactory
+                .builder().connectString("127.0.0.1:2181")
+                .retryPolicy(new ExponentialBackoffRetry(1000, 3))
+                .namespace("myCuratorTest")
+                .build();
+        client.start();
+        String lockPath2 = client.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL_SEQUENTIAL).forPath("/resource/lock-");
+//        String lockPath = client.create().withMode(CreateMode.EPHEMERAL_SEQUENTIAL).forPath("/resource");
+        System.out.println(lockPath2);
+        System.in.read();
+
     }
 }
