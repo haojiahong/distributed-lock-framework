@@ -1,19 +1,13 @@
 package com.hjh.distributed.lock.mysql;
 
-
-import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
 
 /**
  * 这个有死锁问题，倒是可以研究死锁用来用。
  *
  * @author haojiahong created on 2019/12/11
  */
-public class MysqlLock {
+public class MysqlLockDead {
     private static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
     private static final String DB_URL = "jdbc:mysql://localhost:3306/my_lock?useSSL=false&serverTimezone=UTC";
     private static final String USER = "root";
@@ -24,7 +18,7 @@ public class MysqlLock {
     private Connection connection;
 
 
-    public MysqlLock(String resource) {
+    public MysqlLockDead(String resource) {
         this.resource = resource;
     }
 
@@ -44,17 +38,26 @@ public class MysqlLock {
         try {
             Class.forName(JDBC_DRIVER);
             connection = DriverManager.getConnection(DB_URL, USER, PASSWORD);
-            String insertSql = "insert into lock_table (resource,node) values(?,?)";
-            PreparedStatement insertStatement = connection.prepareStatement(insertSql);
-            insertStatement.setString(1, resource);
-            insertStatement.setString(2, Thread.currentThread().getName());
-            insertStatement.execute();
-            return true;
-        } catch (Exception e) {
-            if (e instanceof MySQLIntegrityConstraintViolationException) {
-                System.out.println(e.getMessage());
+            connection.setAutoCommit(false);
+            String querySql = "select * from lock_table where resource = ? for update";
+            PreparedStatement queryStatement = connection.prepareStatement(querySql);
+            queryStatement.setString(1, resource);
+            ResultSet resultSet = queryStatement.executeQuery();
+            resultSet.last();
+            if (resultSet.getRow() == 0) {
+                String insertSql = "insert into lock_table (resource,node) values(?,?)";
+                PreparedStatement insertStatement = connection.prepareStatement(insertSql);
+                insertStatement.setString(1, resource);
+                insertStatement.setString(2, Thread.currentThread().getName());
+                insertStatement.execute();
+                connection.commit();
+                return true;
+            } else {
+                connection.commit();
+                return false;
             }
-            return false;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         } finally {
             try {
                 connection.close();
